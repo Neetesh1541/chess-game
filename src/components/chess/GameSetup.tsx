@@ -22,14 +22,16 @@ interface GameSetupProps {
 const GameSetup: React.FC<GameSetupProps> = ({ onStartGame }) => {
   const [mode, setMode] = useState<GameMode>('pvp');
   const [difficulty, setDifficulty] = useState<AIDifficulty>('medium');
-  const [player1Name, setPlayer1Name] = useState('Player 1');
-  const [player2Name, setPlayer2Name] = useState('Player 2');
+  const [player1Name, setPlayer1Name] = useState('');
+  const [player2Name, setPlayer2Name] = useState('');
   const [useTimer, setUseTimer] = useState(true);
   const [timerDuration, setTimerDuration] = useState(600);
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    onStartGame(mode, difficulty, player1Name, player2Name, useTimer, timerDuration);
+    const finalPlayer1Name = player1Name.trim() || 'Player 1';
+    const finalPlayer2Name = player2Name.trim() || 'Player 2';
+    onStartGame(mode, difficulty, finalPlayer1Name, finalPlayer2Name, useTimer, timerDuration);
   };
 
   const timerOptions = [
@@ -146,8 +148,9 @@ const GameSetup: React.FC<GameSetupProps> = ({ onStartGame }) => {
               id="player1"
               value={player1Name}
               onChange={(e) => setPlayer1Name(e.target.value)}
-              placeholder="Enter name"
+              placeholder="Enter your name"
               className="bg-secondary border-border"
+              autoComplete="off"
             />
           </div>
 
@@ -162,8 +165,9 @@ const GameSetup: React.FC<GameSetupProps> = ({ onStartGame }) => {
                 id="player2"
                 value={player2Name}
                 onChange={(e) => setPlayer2Name(e.target.value)}
-                placeholder="Enter name"
+                placeholder="Enter opponent name"
                 className="bg-secondary border-border"
+                autoComplete="off"
               />
             </motion.div>
           )}

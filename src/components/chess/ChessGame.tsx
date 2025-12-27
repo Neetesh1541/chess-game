@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 import ChessBoard from './ChessBoard';
 import PlayerInfo from './PlayerInfo';
 import MoveHistory from './MoveHistory';
@@ -9,13 +10,19 @@ import GameResultModal from './GameResultModal';
 import ThemeSelector from './ThemeSelector';
 import HelpSection from './HelpSection';
 import Footer from './Footer';
+import OnlineLobby from './OnlineLobby';
+import OnlineGame from './OnlineGame';
 import { useChessGame } from '@/hooks/useChessGame';
 import { useTheme } from '@/hooks/useTheme';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
+import { useAuth } from '@/hooks/useAuth';
+import { useOnlineGame } from '@/hooks/useOnlineGame';
 import { GameResult, GameMode, AIDifficulty } from '@/types/chess';
 import { Square } from 'chess.js';
 
 const ChessGame: React.FC = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const {
     gameState,
     boardPosition,
@@ -29,12 +36,15 @@ const ChessGame: React.FC = () => {
     resignGame,
   } = useChessGame();
 
+  const { currentGame } = useOnlineGame(user?.id);
   const { theme, changeTheme } = useTheme();
   const { playMove, playCapture, playCheck, playGameOver, playClick, toggleSound, isSoundEnabled } = useSoundEffects();
   
   const [soundEnabled, setSoundEnabled] = useState(true);
   const [showResult, setShowResult] = useState(false);
   const [gameResult, setGameResult] = useState<GameResult | null>(null);
+  const [showOnlineLobby, setShowOnlineLobby] = useState(false);
+  const [showOnlineGame, setShowOnlineGame] = useState(false);
 
   // Handle game over
   useEffect(() => {
@@ -65,7 +75,15 @@ const ChessGame: React.FC = () => {
       
       setTimeout(() => setShowResult(true), 500);
     }
-  }, [gameState.gameOver, gameState.gameStarted]);
+  }, [gameState.gameOver, gameState.gameStarted, playGameOver]);
+
+  // Show online game when currentGame exists
+  useEffect(() => {
+    if (currentGame && currentGame.status === 'in_progress') {
+      setShowOnlineGame(true);
+      setShowOnlineLobby(false);
+    }
+  }, [currentGame]);
 
   // Play sounds on moves
   useEffect(() => {
@@ -101,7 +119,7 @@ const ChessGame: React.FC = () => {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [undoMove, restartGame]);
+  }, [undoMove, restartGame, playClick]);
 
   const handleSquareClick = (square: Square) => {
     playClick();
@@ -135,6 +153,24 @@ const ChessGame: React.FC = () => {
     startGame(mode, difficulty, player1Name, player2Name, useTimer, timerDuration);
   };
 
+  const handlePlayOnline = () => {
+    playClick();
+    if (!user) {
+      navigate('/auth');
+      return;
+    }
+    setShowOnlineLobby(true);
+  };
+
+  const handleBackFromLobby = () => {
+    setShowOnlineLobby(false);
+  };
+
+  const handleBackFromGame = () => {
+    setShowOnlineGame(false);
+    setShowOnlineLobby(true);
+  };
+
   return (
     <div className="min-h-screen flex flex-col">
       {/* Animated background */}
@@ -161,14 +197,33 @@ const ChessGame: React.FC = () => {
       {/* Main content */}
       <main className="flex-1 flex items-center justify-center p-4">
         <AnimatePresence mode="wait">
-          {!gameState.gameStarted ? (
+          {showOnlineGame && currentGame ? (
+            <motion.div
+              key="online-game"
+              className="w-full"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <OnlineGame onBack={handleBackFromGame} />
+            </motion.div>
+          ) : showOnlineLobby ? (
+            <motion.div
+              key="online-lobby"
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+            >
+              <OnlineLobby onBack={handleBackFromLobby} />
+            </motion.div>
+          ) : !gameState.gameStarted ? (
             <motion.div
               key="setup"
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               exit={{ opacity: 0, scale: 0.9 }}
             >
-              <GameSetup onStartGame={handleStartGame} />
+              <GameSetup onStartGame={handleStartGame} onPlayOnline={handlePlayOnline} />
             </motion.div>
           ) : (
             <motion.div

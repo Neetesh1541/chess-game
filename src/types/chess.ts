@@ -18,7 +18,7 @@ export interface Move {
   flags: string;
 }
 
-export type GameMode = 'pvp' | 'ai';
+export type GameMode = 'pvp' | 'ai' | 'online';
 export type AIDifficulty = 'easy' | 'medium' | 'hard';
 export type Theme = 'default' | 'classic' | 'ocean' | 'forest' | 'sunset';
 

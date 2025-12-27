@@ -29,11 +29,10 @@ import { useFriends, Friendship } from '@/hooks/useFriends';
 import { supabase } from '@/integrations/supabase/client';
 
 interface OnlineLobbyProps {
-  onStartOnlineGame: () => void;
   onBack: () => void;
 }
 
-const OnlineLobby: React.FC<OnlineLobbyProps> = ({ onStartOnlineGame, onBack }) => {
+const OnlineLobby: React.FC<OnlineLobbyProps> = ({ onBack }) => {
   const { user, profile, signOut } = useAuth();
   const { 
     currentGame, 
@@ -86,12 +85,7 @@ const OnlineLobby: React.FC<OnlineLobbyProps> = ({ onStartOnlineGame, onBack }) 
     return () => clearInterval(interval);
   }, []);
 
-  // When game starts, notify parent
-  useEffect(() => {
-    if (currentGame?.status === 'in_progress') {
-      onStartOnlineGame();
-    }
-  }, [currentGame?.status, onStartOnlineGame]);
+  // Game start is handled by parent component watching currentGame state
 
   const handleCopyCode = () => {
     if (currentGame?.invite_code) {

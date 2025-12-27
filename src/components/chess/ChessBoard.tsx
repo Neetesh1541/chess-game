@@ -9,7 +9,7 @@ const PIECE_SYMBOLS: Record<string, string> = {
   'bk': '♚', 'bq': '♛', 'br': '♜', 'bb': '♝', 'bn': '♞', 'bp': '♟',
 };
 
-interface ChessBoardProps {
+export interface ChessBoardProps {
   board: (ChessPieceType | null)[][];
   selectedSquare: Square | null;
   validMoves: Square[];
@@ -18,6 +18,7 @@ interface ChessBoardProps {
   currentTurn: 'w' | 'b';
   onSquareClick: (square: Square) => void;
   disabled?: boolean;
+  flipped?: boolean;
 }
 
 const ChessBoard: React.FC<ChessBoardProps> = ({
@@ -29,9 +30,13 @@ const ChessBoard: React.FC<ChessBoardProps> = ({
   currentTurn,
   onSquareClick,
   disabled = false,
+  flipped = false,
 }) => {
-  const files = ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
-  const ranks = [8, 7, 6, 5, 4, 3, 2, 1];
+  const files = flipped ? ['h', 'g', 'f', 'e', 'd', 'c', 'b', 'a'] : ['a', 'b', 'c', 'd', 'e', 'f', 'g', 'h'];
+  const ranks = flipped ? [1, 2, 3, 4, 5, 6, 7, 8] : [8, 7, 6, 5, 4, 3, 2, 1];
+  
+  // Flip the board data if needed
+  const displayBoard = flipped ? [...board].reverse().map(row => [...row].reverse()) : board;
 
   const getSquareName = (row: number, col: number): Square => {
     return `${files[col]}${ranks[row]}` as Square;
@@ -71,7 +76,7 @@ const ChessBoard: React.FC<ChessBoardProps> = ({
         animate={{ opacity: 1, scale: 1 }}
         transition={{ duration: 0.5, ease: 'easeOut' }}
       >
-        {board.map((row, rowIndex) =>
+        {displayBoard.map((row, rowIndex) =>
           row.map((piece, colIndex) => {
             const square = getSquareName(rowIndex, colIndex);
             const isLight = isLightSquare(rowIndex, colIndex);

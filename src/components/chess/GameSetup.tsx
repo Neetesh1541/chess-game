@@ -6,7 +6,7 @@ import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { GameMode, AIDifficulty } from '@/types/chess';
-import { Users, Bot, Zap, Brain, Flame, Clock } from 'lucide-react';
+import { Users, Bot, Zap, Brain, Flame, Clock, Globe } from 'lucide-react';
 
 interface GameSetupProps {
   onStartGame: (
@@ -17,9 +17,10 @@ interface GameSetupProps {
     useTimer: boolean,
     timerDuration: number
   ) => void;
+  onPlayOnline?: () => void;
 }
 
-const GameSetup: React.FC<GameSetupProps> = ({ onStartGame }) => {
+const GameSetup: React.FC<GameSetupProps> = ({ onStartGame, onPlayOnline }) => {
   const [mode, setMode] = useState<GameMode>('pvp');
   const [difficulty, setDifficulty] = useState<AIDifficulty>('medium');
   const [player1Name, setPlayer1Name] = useState('');
@@ -29,6 +30,10 @@ const GameSetup: React.FC<GameSetupProps> = ({ onStartGame }) => {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
+    if (mode === 'online') {
+      onPlayOnline?.();
+      return;
+    }
     const finalPlayer1Name = player1Name.trim() || 'Player 1';
     const finalPlayer2Name = player2Name.trim() || 'Player 2';
     onStartGame(mode, difficulty, finalPlayer1Name, finalPlayer2Name, useTimer, timerDuration);
@@ -57,7 +62,7 @@ const GameSetup: React.FC<GameSetupProps> = ({ onStartGame }) => {
         {/* Game Mode Selection */}
         <div className="space-y-3">
           <Label className="text-base font-semibold">Game Mode</Label>
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-3 gap-3">
             <motion.button
               type="button"
               className={`p-4 rounded-lg border-2 transition-all ${
@@ -70,8 +75,8 @@ const GameSetup: React.FC<GameSetupProps> = ({ onStartGame }) => {
               whileTap={{ scale: 0.98 }}
             >
               <Users className="w-8 h-8 mx-auto mb-2 text-primary" />
-              <p className="font-medium">Player vs Player</p>
-              <p className="text-xs text-muted-foreground">Local multiplayer</p>
+              <p className="font-medium text-sm">Local</p>
+              <p className="text-xs text-muted-foreground">Same device</p>
             </motion.button>
 
             <motion.button
@@ -86,8 +91,24 @@ const GameSetup: React.FC<GameSetupProps> = ({ onStartGame }) => {
               whileTap={{ scale: 0.98 }}
             >
               <Bot className="w-8 h-8 mx-auto mb-2 text-primary" />
-              <p className="font-medium">Player vs AI</p>
-              <p className="text-xs text-muted-foreground">Challenge the computer</p>
+              <p className="font-medium text-sm">vs AI</p>
+              <p className="text-xs text-muted-foreground">Computer</p>
+            </motion.button>
+
+            <motion.button
+              type="button"
+              className={`p-4 rounded-lg border-2 transition-all ${
+                mode === 'online'
+                  ? 'border-primary bg-primary/10'
+                  : 'border-border bg-secondary/50 hover:border-primary/50'
+              }`}
+              onClick={() => setMode('online')}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+            >
+              <Globe className="w-8 h-8 mx-auto mb-2 text-primary" />
+              <p className="font-medium text-sm">Online</p>
+              <p className="text-xs text-muted-foreground">Play friends</p>
             </motion.button>
           </div>
         </div>
@@ -140,78 +161,95 @@ const GameSetup: React.FC<GameSetupProps> = ({ onStartGame }) => {
           </motion.div>
         )}
 
-        {/* Player Names */}
-        <div className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="player1">White Player Name</Label>
-            <Input
-              id="player1"
-              value={player1Name}
-              onChange={(e) => setPlayer1Name(e.target.value)}
-              placeholder="Enter your name"
-              className="bg-secondary border-border"
-              autoComplete="off"
-            />
-          </div>
-
-          {mode === 'pvp' && (
-            <motion.div
-              className="space-y-2"
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-            >
-              <Label htmlFor="player2">Black Player Name</Label>
+        {/* Player Names - only for local modes */}
+        {mode !== 'online' && (
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="player1">White Player Name</Label>
               <Input
-                id="player2"
-                value={player2Name}
-                onChange={(e) => setPlayer2Name(e.target.value)}
-                placeholder="Enter opponent name"
+                id="player1"
+                value={player1Name}
+                onChange={(e) => setPlayer1Name(e.target.value)}
+                placeholder="Enter your name"
                 className="bg-secondary border-border"
                 autoComplete="off"
               />
-            </motion.div>
-          )}
-        </div>
-
-        {/* Timer Settings */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-primary" />
-              <Label htmlFor="timer" className="text-base font-semibold cursor-pointer">
-                Chess Clock
-              </Label>
             </div>
-            <Switch
-              id="timer"
-              checked={useTimer}
-              onCheckedChange={setUseTimer}
-            />
-          </div>
 
-          {useTimer && (
-            <motion.div
-              className="flex flex-wrap gap-2"
-              initial={{ opacity: 0, height: 0 }}
-              animate={{ opacity: 1, height: 'auto' }}
-            >
-              {timerOptions.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
-                    timerDuration === option.value
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-secondary text-secondary-foreground hover:bg-primary/20'
-                  }`}
-                  onClick={() => setTimerDuration(option.value)}
-                >
-                  {option.label}
-                </button>
-              ))}
-            </motion.div>
-          )}
-        </div>
+            {mode === 'pvp' && (
+              <motion.div
+                className="space-y-2"
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+              >
+                <Label htmlFor="player2">Black Player Name</Label>
+                <Input
+                  id="player2"
+                  value={player2Name}
+                  onChange={(e) => setPlayer2Name(e.target.value)}
+                  placeholder="Enter opponent name"
+                  className="bg-secondary border-border"
+                  autoComplete="off"
+                />
+              </motion.div>
+            )}
+          </div>
+        )}
+
+        {/* Timer Settings - only for local modes */}
+        {mode !== 'online' && (
+          <div className="space-y-3">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Clock className="w-4 h-4 text-primary" />
+                <Label htmlFor="timer" className="text-base font-semibold cursor-pointer">
+                  Chess Clock
+                </Label>
+              </div>
+              <Switch
+                id="timer"
+                checked={useTimer}
+                onCheckedChange={setUseTimer}
+              />
+            </div>
+
+            {useTimer && (
+              <motion.div
+                className="flex flex-wrap gap-2"
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+              >
+                {timerOptions.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    className={`px-3 py-1.5 rounded-full text-sm font-medium transition-all ${
+                      timerDuration === option.value
+                        ? 'bg-primary text-primary-foreground'
+                        : 'bg-secondary text-secondary-foreground hover:bg-primary/20'
+                    }`}
+                    onClick={() => setTimerDuration(option.value)}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </motion.div>
+            )}
+          </div>
+        )}
+
+        {/* Online mode info */}
+        {mode === 'online' && (
+          <motion.div
+            className="p-4 rounded-lg bg-primary/10 border border-primary/20"
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+          >
+            <p className="text-sm text-center text-muted-foreground">
+              Play against friends or random opponents online. Sign in required.
+            </p>
+          </motion.div>
+        )}
 
         {/* Start Button */}
         <Button
@@ -219,7 +257,7 @@ const GameSetup: React.FC<GameSetupProps> = ({ onStartGame }) => {
           className="w-full glow-button text-lg py-6 font-display font-semibold"
           size="lg"
         >
-          Start Game
+          {mode === 'online' ? 'Play Online' : 'Start Game'}
         </Button>
       </form>
     </motion.div>

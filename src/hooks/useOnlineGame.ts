@@ -519,7 +519,75 @@ export const useOnlineGame = (userId: string | undefined) => {
     setBoardPosition(chess.board());
     setMoveHistory([]);
     setLastMove(null);
+    setSelectedSquare(null);
+    setValidMoves([]);
   }, [currentGame, chess]);
+
+  // Request rematch with the same opponent
+  const requestRematch = useCallback(async () => {
+    if (!currentGame || !userId) return null;
+
+    try {
+      const opponentId = playerColor === 'w' 
+        ? currentGame.black_player_id 
+        : currentGame.white_player_id;
+
+      if (!opponentId) {
+        toast({
+          title: "Cannot rematch",
+          description: "Opponent not found.",
+          variant: "destructive",
+        });
+        return null;
+      }
+
+      // Create new game with colors swapped
+      const { data: newGame, error } = await supabase
+        .from('online_games')
+        .insert({
+          white_player_id: currentGame.black_player_id, // Swap colors
+          black_player_id: currentGame.white_player_id,
+          status: 'in_progress',
+          game_type: currentGame.game_type,
+          fen: 'rnbqkbnr/pppppppp/8/8/8/8/PPPPPPPP/RNBQKBNR w KQkq - 0 1',
+          time_control: currentGame.time_control,
+          white_time_remaining: currentGame.time_control,
+          black_time_remaining: currentGame.time_control,
+        })
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      // Reset local state
+      chess.reset();
+      setBoardPosition(chess.board());
+      setMoveHistory([]);
+      setLastMove(null);
+      setSelectedSquare(null);
+      setValidMoves([]);
+      
+      // Set new game
+      setCurrentGame(newGame as OnlineGame);
+      const newColor = newGame.white_player_id === userId ? 'w' : 'b';
+      setPlayerColor(newColor);
+
+      toast({
+        title: "Rematch started!",
+        description: `You're now playing as ${newColor === 'w' ? 'White' : 'Black'}.`,
+      });
+
+      return newGame;
+    } catch (error) {
+      console.error('Error creating rematch:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create rematch.",
+        variant: "destructive",
+      });
+      return null;
+    }
+  }, [currentGame, userId, playerColor, chess, toast]);
 
   return {
     currentGame,
@@ -542,5 +610,6 @@ export const useOnlineGame = (userId: string | undefined) => {
     selectSquare,
     resignGame,
     leaveGame,
+    requestRematch,
   };
 };

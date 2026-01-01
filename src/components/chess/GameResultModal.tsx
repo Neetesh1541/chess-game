@@ -9,6 +9,7 @@ interface GameResultModalProps {
   result: GameResultType | null;
   onRestart: () => void;
   onNewGame: () => void;
+  isOnlineGame?: boolean;
 }
 
 const GameResultModal: React.FC<GameResultModalProps> = ({
@@ -16,6 +17,7 @@ const GameResultModal: React.FC<GameResultModalProps> = ({
   result,
   onRestart,
   onNewGame,
+  isOnlineGame = false,
 }) => {
   if (!result) return null;
 
@@ -127,7 +129,7 @@ const GameResultModal: React.FC<GameResultModalProps> = ({
                 className="flex-1 glow-button"
               >
                 <RotateCcw className="w-4 h-4 mr-2" />
-                Rematch
+                {isOnlineGame ? 'Rematch' : 'Play Again'}
               </Button>
               <Button
                 onClick={onNewGame}
@@ -135,7 +137,7 @@ const GameResultModal: React.FC<GameResultModalProps> = ({
                 className="flex-1"
               >
                 <Home className="w-4 h-4 mr-2" />
-                New Game
+                {isOnlineGame ? 'Leave' : 'New Game'}
               </Button>
             </motion.div>
           </motion.div>

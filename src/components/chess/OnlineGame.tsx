@@ -34,6 +34,7 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ onBack }) => {
     selectSquare,
     resignGame,
     leaveGame,
+    requestRematch,
   } = useOnlineGame(user?.id);
 
   const { playMove, playCapture, playCheck, playGameOver, playClick, toggleSound, isSoundEnabled } = useSoundEffects();
@@ -111,6 +112,19 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ onBack }) => {
   };
 
   const handleLeave = () => {
+    leaveGame();
+    onBack();
+  };
+
+  const handleRematch = async () => {
+    setShowResult(false);
+    setGameResult(null);
+    await requestRematch();
+  };
+
+  const handleNewGame = () => {
+    setShowResult(false);
+    setGameResult(null);
     leaveGame();
     onBack();
   };
@@ -211,8 +225,9 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ onBack }) => {
       <GameResultModal
         isOpen={showResult}
         result={gameResult}
-        onRestart={handleLeave}
-        onNewGame={handleLeave}
+        onRestart={handleRematch}
+        onNewGame={handleNewGame}
+        isOnlineGame={true}
       />
     </motion.div>
   );

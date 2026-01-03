@@ -77,52 +77,87 @@ export const useOnlineGame = (userId: string | undefined) => {
     };
 
     checkActiveGame();
+  }, [userId, chess]);
 
-    // Subscribe to ANY game updates where user is a participant
-    // This catches when someone joins our waiting game
-    const userGamesChannel = supabase
-      .channel(`user-games-${userId}`)
+  // Subscribe to updates for the current game specifically
+  // This ensures both players get notified when the game state changes
+  useEffect(() => {
+    if (!currentGame?.id || !userId) return;
+
+    console.log('useOnlineGame: Subscribing to game updates for:', currentGame.id);
+
+    const gameChannel = supabase
+      .channel(`game-updates-${currentGame.id}`)
       .on(
         'postgres_changes',
         {
-          event: '*',
+          event: 'UPDATE',
           schema: 'public',
           table: 'online_games',
+          filter: `id=eq.${currentGame.id}`,
         },
         (payload) => {
           const updatedGame = payload.new as OnlineGame;
-          console.log('useOnlineGame: Game change detected:', payload.eventType, updatedGame?.id, updatedGame?.status);
+          console.log('useOnlineGame: Current game updated via realtime:', updatedGame.id, updatedGame.status, 'black_player:', updatedGame.black_player_id);
           
-          // Check if this update is for a game we're part of
-          if (updatedGame && (updatedGame.white_player_id === userId || updatedGame.black_player_id === userId)) {
-            console.log('useOnlineGame: User game updated via channel:', updatedGame.id, updatedGame.status);
-            
-            // Force state update with new object reference
-            setCurrentGame({...updatedGame});
-            
-            // Set player color if not already set
-            if (updatedGame.white_player_id === userId) {
-              setPlayerColor('w');
-            } else if (updatedGame.black_player_id === userId) {
-              setPlayerColor('b');
-            }
-            
-            // Update board position
-            if (updatedGame.fen) {
-              chess.load(updatedGame.fen);
-              setBoardPosition(chess.board());
-            }
+          // Force state update with new object reference
+          setCurrentGame({...updatedGame});
+          
+          // Set player color
+          if (updatedGame.white_player_id === userId) {
+            setPlayerColor('w');
+          } else if (updatedGame.black_player_id === userId) {
+            setPlayerColor('b');
+          }
+          
+          // Update board position
+          if (updatedGame.fen) {
+            chess.load(updatedGame.fen);
+            setBoardPosition(chess.board());
           }
         }
       )
       .subscribe((status) => {
-        console.log('useOnlineGame: User games channel status:', status);
+        console.log('useOnlineGame: Game channel status:', status, 'for game:', currentGame.id);
       });
 
+    // Polling fallback for waiting games (in case realtime fails)
+    let pollInterval: NodeJS.Timeout | null = null;
+    if (currentGame.status === 'waiting') {
+      console.log('useOnlineGame: Starting polling for waiting game:', currentGame.id);
+      pollInterval = setInterval(async () => {
+        const { data: game, error } = await supabase
+          .from('online_games')
+          .select('*')
+          .eq('id', currentGame.id)
+          .single();
+        
+        if (!error && game && game.status !== currentGame.status) {
+          console.log('useOnlineGame: Polling detected game update:', game.id, game.status);
+          setCurrentGame({...game} as OnlineGame);
+          
+          if (game.white_player_id === userId) {
+            setPlayerColor('w');
+          } else if (game.black_player_id === userId) {
+            setPlayerColor('b');
+          }
+          
+          if (game.fen) {
+            chess.load(game.fen);
+            setBoardPosition(chess.board());
+          }
+        }
+      }, 2000); // Poll every 2 seconds
+    }
+
     return () => {
-      supabase.removeChannel(userGamesChannel);
+      console.log('useOnlineGame: Unsubscribing from game updates:', currentGame.id);
+      supabase.removeChannel(gameChannel);
+      if (pollInterval) {
+        clearInterval(pollInterval);
+      }
     };
-  }, [userId, chess]);
+  }, [currentGame?.id, currentGame?.status, userId, chess]);
 
   // Subscribe to game moves for the current game
   useEffect(() => {
@@ -175,6 +210,11 @@ export const useOnlineGame = (userId: string | undefined) => {
     if (!userId) return null;
 
     try {
+      console.log('useOnlineGame: Joining game by ID:', gameId);
+      
+      // Small delay to ensure the database has been updated
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
       const { data: game, error } = await supabase
         .from('online_games')
         .select('*')
@@ -183,6 +223,8 @@ export const useOnlineGame = (userId: string | undefined) => {
 
       if (error) throw error;
 
+      console.log('useOnlineGame: Fetched game:', game.id, 'status:', game.status, 'black_player:', game.black_player_id);
+      
       setCurrentGame(game as OnlineGame);
       setPlayerColor(game.white_player_id === userId ? 'w' : 'b');
       chess.load(game.fen);
@@ -285,6 +327,7 @@ export const useOnlineGame = (userId: string | undefined) => {
 
     try {
       const inviteCode = Math.random().toString(36).substring(2, 8).toUpperCase();
+      console.log('useOnlineGame: Creating friend game with code:', inviteCode);
       
       const { data: newGame, error } = await supabase
         .from('online_games')
@@ -303,6 +346,7 @@ export const useOnlineGame = (userId: string | undefined) => {
 
       if (error) throw error;
 
+      console.log('useOnlineGame: Created friend game:', newGame.id);
       setCurrentGame(newGame);
       setPlayerColor('w');
 
@@ -328,6 +372,8 @@ export const useOnlineGame = (userId: string | undefined) => {
     setIsConnecting(true);
 
     try {
+      console.log('useOnlineGame: Attempting to join with code:', inviteCode);
+      
       const { data: games, error: fetchError } = await supabase
         .from('online_games')
         .select('*')
@@ -337,6 +383,8 @@ export const useOnlineGame = (userId: string | undefined) => {
         .limit(1);
 
       if (fetchError) throw fetchError;
+
+      console.log('useOnlineGame: Found waiting games:', games?.length || 0);
 
       if (!games || games.length === 0) {
         toast({
@@ -360,6 +408,8 @@ export const useOnlineGame = (userId: string | undefined) => {
         return null;
       }
 
+      console.log('useOnlineGame: Joining game:', game.id);
+      
       const { data: updatedGame, error: updateError } = await supabase
         .from('online_games')
         .update({
@@ -372,6 +422,8 @@ export const useOnlineGame = (userId: string | undefined) => {
 
       if (updateError) throw updateError;
 
+      console.log('useOnlineGame: Successfully joined game:', updatedGame.id, 'status:', updatedGame.status);
+      
       setCurrentGame(updatedGame);
       setPlayerColor('b');
       chess.load(updatedGame.fen);

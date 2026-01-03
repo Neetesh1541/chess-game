@@ -85,16 +85,20 @@ export const useOnlineGame = (userId: string | undefined) => {
       .on(
         'postgres_changes',
         {
-          event: 'UPDATE',
+          event: '*',
           schema: 'public',
           table: 'online_games',
         },
         (payload) => {
           const updatedGame = payload.new as OnlineGame;
+          console.log('useOnlineGame: Game change detected:', payload.eventType, updatedGame?.id, updatedGame?.status);
+          
           // Check if this update is for a game we're part of
-          if (updatedGame.white_player_id === userId || updatedGame.black_player_id === userId) {
+          if (updatedGame && (updatedGame.white_player_id === userId || updatedGame.black_player_id === userId)) {
             console.log('useOnlineGame: User game updated via channel:', updatedGame.id, updatedGame.status);
-            setCurrentGame(updatedGame);
+            
+            // Force state update with new object reference
+            setCurrentGame({...updatedGame});
             
             // Set player color if not already set
             if (updatedGame.white_player_id === userId) {

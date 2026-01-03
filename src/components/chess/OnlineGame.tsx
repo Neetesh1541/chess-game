@@ -4,6 +4,7 @@ import ChessBoard from './ChessBoard';
 import PlayerInfo from './PlayerInfo';
 import MoveHistory from './MoveHistory';
 import GameResultModal from './GameResultModal';
+import GameChat from './GameChat';
 import { Button } from '@/components/ui/button';
 import { useOnlineGame } from '@/hooks/useOnlineGame';
 import { useAuth, Profile } from '@/hooks/useAuth';
@@ -229,6 +230,15 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ onBack }) => {
         onNewGame={handleNewGame}
         isOnlineGame={true}
       />
+
+      {/* In-game chat */}
+      {user && currentGame.status === 'in_progress' && (
+        <GameChat
+          gameId={currentGame.id}
+          currentUserId={user.id}
+          opponentName={opponentProfile?.display_name || opponentProfile?.username || 'Opponent'}
+        />
+      )}
     </motion.div>
   );
 };

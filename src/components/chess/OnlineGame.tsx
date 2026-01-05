@@ -6,6 +6,7 @@ import MoveHistory from './MoveHistory';
 import GameResultModal from './GameResultModal';
 import GameChat from './GameChat';
 import ConnectionStatus from './ConnectionStatus';
+import DrawOffer from './DrawOffer';
 import { Button } from '@/components/ui/button';
 import { useOnlineGame } from '@/hooks/useOnlineGame';
 import { useAuth, Profile } from '@/hooks/useAuth';
@@ -36,10 +37,15 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ onBack }) => {
     isRealtimeConnected,
     whiteTimeRemaining,
     blackTimeRemaining,
+    isDrawOffered,
+    isDrawReceived,
     selectSquare,
     resignGame,
     leaveGame,
     requestRematch,
+    offerDraw,
+    acceptDraw,
+    declineDraw,
   } = useOnlineGame(user?.id);
 
   const { playMove, playCapture, playCheck, playGameOver, playClick, toggleSound, isSoundEnabled } = useSoundEffects();
@@ -179,6 +185,15 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ onBack }) => {
           />
           
           <div className="space-y-2">
+            <DrawOffer
+              isOffering={isDrawOffered}
+              isReceiving={isDrawReceived}
+              onOffer={offerDraw}
+              onAccept={acceptDraw}
+              onDecline={declineDraw}
+              disabled={currentGame.status !== 'in_progress'}
+            />
+            
             <Button 
               variant="outline" 
               className="w-full gap-2"

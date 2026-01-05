@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { useAuth } from '@/hooks/useAuth';
 import { supabase } from '@/integrations/supabase/client';
+import GameHistory from '@/components/chess/GameHistory';
 import { 
   ArrowLeft, 
   User, 
@@ -19,7 +20,8 @@ import {
   Minus,
   Save,
   Loader2,
-  LogOut
+  LogOut,
+  Star
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 
@@ -281,11 +283,20 @@ const Profile: React.FC = () => {
                   transition={{ duration: 1, ease: "easeOut" }}
                 />
               </div>
-              <p className="text-sm text-muted-foreground mt-2">
-                Member since {new Date(profile.created_at).toLocaleDateString()}
-              </p>
+              <div className="flex items-center justify-between mt-3">
+                <p className="text-sm text-muted-foreground">
+                  Member since {new Date(profile.created_at).toLocaleDateString()}
+                </p>
+                <div className="flex items-center gap-1 text-primary">
+                  <Star className="w-4 h-4" />
+                  <span className="text-sm font-medium">Rank #{Math.max(1, Math.floor((2000 - profile.rating) / 100) + 1)}</span>
+                </div>
+              </div>
             </CardContent>
           </Card>
+
+          {/* Game History */}
+          <GameHistory userId={user.id} />
         </motion.div>
       </main>
     </div>

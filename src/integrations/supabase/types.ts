@@ -151,6 +151,7 @@ export type Database = {
           game_id: string
           id: string
           move_number: number
+          move_time_ms: number | null
           player_id: string
           san: string
           to_square: string
@@ -162,6 +163,7 @@ export type Database = {
           game_id: string
           id?: string
           move_number: number
+          move_time_ms?: number | null
           player_id: string
           san: string
           to_square: string
@@ -173,6 +175,7 @@ export type Database = {
           game_id?: string
           id?: string
           move_number?: number
+          move_time_ms?: number | null
           player_id?: string
           san?: string
           to_square?: string
@@ -201,6 +204,7 @@ export type Database = {
           completed_at: string | null
           created_at: string
           current_turn: string
+          draw_offered_by: string | null
           fen: string
           game_type: string
           id: string
@@ -220,6 +224,7 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           current_turn?: string
+          draw_offered_by?: string | null
           fen?: string
           game_type?: string
           id?: string
@@ -239,6 +244,7 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           current_turn?: string
+          draw_offered_by?: string | null
           fen?: string
           game_type?: string
           id?: string

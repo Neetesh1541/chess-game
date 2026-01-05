@@ -1,12 +1,13 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Button } from '@/components/ui/button';
-import { Undo2, RotateCcw, Flag, Volume2, VolumeX } from 'lucide-react';
+import { Undo2, RotateCcw, Flag, Volume2, VolumeX, Handshake } from 'lucide-react';
 
 interface GameControlsProps {
   onUndo: () => void;
   onRestart: () => void;
   onResign: () => void;
+  onDraw?: () => void;
   soundEnabled: boolean;
   onToggleSound: () => void;
   canUndo: boolean;
@@ -18,6 +19,7 @@ const GameControls: React.FC<GameControlsProps> = ({
   onUndo,
   onRestart,
   onResign,
+  onDraw,
   soundEnabled,
   onToggleSound,
   canUndo,
@@ -55,6 +57,19 @@ const GameControls: React.FC<GameControlsProps> = ({
           <RotateCcw className="w-4 h-4" />
           Restart
         </Button>
+        
+        {onDraw && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={onDraw}
+            disabled={gameOver || !gameStarted}
+            className="flex items-center gap-2"
+          >
+            <Handshake className="w-4 h-4" />
+            Draw
+          </Button>
+        )}
         
         <Button
           variant="destructive"

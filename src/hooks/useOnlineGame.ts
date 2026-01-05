@@ -22,6 +22,7 @@ export interface OnlineGame {
   created_at: string;
   updated_at: string;
   completed_at: string | null;
+  draw_offered_by: string | null;
 }
 
 export const useOnlineGame = (userId: string | undefined) => {
@@ -805,6 +806,70 @@ export const useOnlineGame = (userId: string | undefined) => {
     }
   }, [currentGame, userId, playerColor, chess, toast]);
 
+  // Draw offer functionality
+  const offerDraw = useCallback(async () => {
+    if (!currentGame || !userId || currentGame.status !== 'in_progress') return;
+    
+    try {
+      await supabase
+        .from('online_games')
+        .update({ draw_offered_by: userId })
+        .eq('id', currentGame.id);
+        
+      toast({
+        title: "Draw offered",
+        description: "Waiting for opponent's response...",
+      });
+    } catch (error) {
+      console.error('Error offering draw:', error);
+    }
+  }, [currentGame, userId, toast]);
+
+  const acceptDraw = useCallback(async () => {
+    if (!currentGame || currentGame.status !== 'in_progress') return;
+    
+    try {
+      await supabase
+        .from('online_games')
+        .update({
+          status: 'completed',
+          result: 'draw',
+          winner_id: null,
+          draw_offered_by: null,
+          completed_at: new Date().toISOString(),
+        })
+        .eq('id', currentGame.id);
+        
+      toast({
+        title: "Game drawn",
+        description: "Both players agreed to a draw.",
+      });
+    } catch (error) {
+      console.error('Error accepting draw:', error);
+    }
+  }, [currentGame, toast]);
+
+  const declineDraw = useCallback(async () => {
+    if (!currentGame) return;
+    
+    try {
+      await supabase
+        .from('online_games')
+        .update({ draw_offered_by: null })
+        .eq('id', currentGame.id);
+        
+      toast({
+        title: "Draw declined",
+        description: "The game continues.",
+      });
+    } catch (error) {
+      console.error('Error declining draw:', error);
+    }
+  }, [currentGame, toast]);
+
+  const isDrawOffered = currentGame?.draw_offered_by === userId;
+  const isDrawReceived = currentGame?.draw_offered_by !== null && currentGame?.draw_offered_by !== userId;
+
   return {
     currentGame,
     playerColor,
@@ -822,6 +887,8 @@ export const useOnlineGame = (userId: string | undefined) => {
     isCheck: chess.isCheck(),
     isCheckmate: chess.isCheckmate(),
     isGameOver: chess.isGameOver(),
+    isDrawOffered,
+    isDrawReceived,
     findRandomGame,
     createFriendGame,
     joinFriendGame,
@@ -830,5 +897,8 @@ export const useOnlineGame = (userId: string | undefined) => {
     resignGame,
     leaveGame,
     requestRematch,
+    offerDraw,
+    acceptDraw,
+    declineDraw,
   };
 };

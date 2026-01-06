@@ -37,6 +37,7 @@ const ChessGame: React.FC = () => {
     undoMove,
     restartGame,
     resignGame,
+    offerDraw,
   } = useChessGame();
 
   const { currentGame } = useOnlineGame(user?.id);
@@ -306,6 +307,7 @@ const ChessGame: React.FC = () => {
                       onUndo={undoMove}
                       onRestart={restartGame}
                       onResign={resignGame}
+                      onDraw={offerDraw}
                       soundEnabled={soundEnabled}
                       onToggleSound={handleToggleSound}
                       canUndo={gameState.moveHistory.length > 0}
@@ -349,6 +351,7 @@ const ChessGame: React.FC = () => {
                       onUndo={undoMove}
                       onRestart={restartGame}
                       onResign={resignGame}
+                      onDraw={offerDraw}
                       soundEnabled={soundEnabled}
                       onToggleSound={handleToggleSound}
                       canUndo={gameState.moveHistory.length > 0}
@@ -369,6 +372,9 @@ const ChessGame: React.FC = () => {
         result={gameResult}
         onRestart={handleRestart}
         onNewGame={handleNewGame}
+        moves={gameState.moveHistory}
+        whitePlayerName={gameState.players.white.name}
+        blackPlayerName={gameState.players.black.name}
       />
 
       {/* Footer */}

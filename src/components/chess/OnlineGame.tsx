@@ -6,6 +6,7 @@ import MoveHistory from './MoveHistory';
 import GameResultModal from './GameResultModal';
 import GameChat from './GameChat';
 import ConnectionStatus from './ConnectionStatus';
+import DrawOffer from './DrawOffer';
 import { Button } from '@/components/ui/button';
 import { useOnlineGame } from '@/hooks/useOnlineGame';
 import { useAuth, Profile } from '@/hooks/useAuth';
@@ -34,10 +35,17 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ onBack }) => {
     isCheckmate,
     isGameOver,
     isRealtimeConnected,
+    whiteTimeRemaining,
+    blackTimeRemaining,
+    isDrawOffered,
+    isDrawReceived,
     selectSquare,
     resignGame,
     leaveGame,
     requestRematch,
+    offerDraw,
+    acceptDraw,
+    declineDraw,
   } = useOnlineGame(user?.id);
 
   const { playMove, playCapture, playCheck, playGameOver, playClick, toggleSound, isSoundEnabled } = useSoundEffects();
@@ -45,29 +53,57 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ onBack }) => {
   const [showResult, setShowResult] = useState(false);
   const [gameResult, setGameResult] = useState<GameResult | null>(null);
   const [opponentProfile, setOpponentProfile] = useState<Profile | null>(null);
+  const [whiteProfile, setWhiteProfile] = useState<Profile | null>(null);
+  const [blackProfile, setBlackProfile] = useState<Profile | null>(null);
 
-  // Fetch opponent profile
+  // Fetch both player profiles - refetch when players change
   useEffect(() => {
-    const fetchOpponent = async () => {
-      if (!currentGame || !user) return;
+    const fetchProfiles = async () => {
+      if (!currentGame) return;
       
-      const opponentId = playerColor === 'w' 
-        ? currentGame.black_player_id 
-        : currentGame.white_player_id;
-
-      if (opponentId) {
-        const { data } = await supabase
+      // Fetch white player profile
+      if (currentGame.white_player_id) {
+        const { data: whiteData } = await supabase
           .from('profiles')
           .select('*')
-          .eq('user_id', opponentId)
+          .eq('user_id', currentGame.white_player_id)
           .maybeSingle();
-        
-        setOpponentProfile(data as Profile);
+        if (whiteData) {
+          setWhiteProfile(whiteData as Profile);
+        }
+      }
+
+      // Fetch black player profile
+      if (currentGame.black_player_id) {
+        const { data: blackData } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', currentGame.black_player_id)
+          .maybeSingle();
+        if (blackData) {
+          setBlackProfile(blackData as Profile);
+          // Set opponent for current user
+          if (currentGame.white_player_id === user?.id) {
+            setOpponentProfile(blackData as Profile);
+          }
+        }
+      }
+      
+      // If current user is black, set white as opponent
+      if (currentGame.black_player_id === user?.id && currentGame.white_player_id) {
+        const { data: whiteData } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', currentGame.white_player_id)
+          .maybeSingle();
+        if (whiteData) {
+          setOpponentProfile(whiteData as Profile);
+        }
       }
     };
 
-    fetchOpponent();
-  }, [currentGame, playerColor, user]);
+    fetchProfiles();
+  }, [currentGame?.id, currentGame?.white_player_id, currentGame?.black_player_id, user?.id]);
 
   // Play sounds on moves
   useEffect(() => {
@@ -93,15 +129,25 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ onBack }) => {
       const isWinner = currentGame.winner_id === user?.id;
       const isDraw = !currentGame.winner_id;
       
+      // Determine winner name based on winner_id
+      let winnerName: string | null = null;
+      if (!isDraw && currentGame.winner_id) {
+        if (currentGame.winner_id === currentGame.white_player_id) {
+          winnerName = whiteProfile?.display_name || whiteProfile?.username || 'White';
+        } else {
+          winnerName = blackProfile?.display_name || blackProfile?.username || 'Black';
+        }
+      }
+      
       setGameResult({
-        winner: isDraw ? null : (isWinner ? (profile?.display_name || profile?.username || 'You') : (opponentProfile?.display_name || opponentProfile?.username || 'Opponent')),
+        winner: winnerName,
         reason: currentGame.result as GameResult['reason'] || 'checkmate',
         moveCount: moveHistory.length,
       });
       
       setTimeout(() => setShowResult(true), 500);
     }
-  }, [currentGame?.status, currentGame?.winner_id, currentGame?.result, user?.id, profile, opponentProfile, playGameOver, moveHistory.length]);
+  }, [currentGame?.status, currentGame?.winner_id, currentGame?.result, user?.id, whiteProfile, blackProfile, playGameOver, moveHistory.length]);
 
   const handleSquareClick = (square: Square) => {
     if (!isMyTurn) return;
@@ -136,8 +182,9 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ onBack }) => {
     return null;
   }
 
-  const whitePlayer = playerColor === 'w' ? profile : opponentProfile;
-  const blackPlayer = playerColor === 'b' ? profile : opponentProfile;
+  // Get player names from profiles
+  const whiteName = whiteProfile?.display_name || whiteProfile?.username || 'Waiting...';
+  const blackName = blackProfile?.display_name || blackProfile?.username || 'Waiting...';
 
   return (
     <motion.div
@@ -149,14 +196,23 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ onBack }) => {
         {/* Left panel */}
         <div className="order-2 lg:order-1 space-y-4">
           <PlayerInfo
-            name={blackPlayer?.display_name || blackPlayer?.username || 'Waiting...'}
+            name={blackName}
             color="b"
             isActive={currentGame.current_turn === 'b' && currentGame.status === 'in_progress'}
-            timeRemaining={currentGame.black_time_remaining || 600}
+            timeRemaining={blackTimeRemaining}
             showTimer={!!currentGame.time_control}
           />
           
           <div className="space-y-2">
+            <DrawOffer
+              isOffering={isDrawOffered}
+              isReceiving={isDrawReceived}
+              onOffer={offerDraw}
+              onAccept={acceptDraw}
+              onDecline={declineDraw}
+              disabled={currentGame.status !== 'in_progress'}
+            />
+            
             <Button 
               variant="outline" 
               className="w-full gap-2"
@@ -215,10 +271,10 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ onBack }) => {
         {/* Right panel */}
         <div className="order-3 space-y-4">
           <PlayerInfo
-            name={whitePlayer?.display_name || whitePlayer?.username || 'Waiting...'}
+            name={whiteName}
             color="w"
             isActive={currentGame.current_turn === 'w' && currentGame.status === 'in_progress'}
-            timeRemaining={currentGame.white_time_remaining || 600}
+            timeRemaining={whiteTimeRemaining}
             showTimer={!!currentGame.time_control}
           />
           
@@ -232,6 +288,9 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ onBack }) => {
         onRestart={handleRematch}
         onNewGame={handleNewGame}
         isOnlineGame={true}
+        moves={moveHistory}
+        whitePlayerName={whiteName}
+        blackPlayerName={blackName}
       />
 
       {/* In-game chat */}

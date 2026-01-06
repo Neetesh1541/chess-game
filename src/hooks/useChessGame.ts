@@ -197,6 +197,16 @@ export const useChessGame = () => {
     }));
   }, []);
 
+  const offerDraw = useCallback(() => {
+    // In local mode, draw is immediately accepted
+    setGameState(prev => ({
+      ...prev,
+      gameOver: true,
+      isDraw: true,
+      winner: null,
+    }));
+  }, []);
+
   // AI Move Logic
   const makeAIMove = useCallback(() => {
     if (gameState.mode !== 'ai' || chess.turn() !== 'b' || gameState.gameOver) return;
@@ -312,5 +322,6 @@ export const useChessGame = () => {
     undoMove,
     restartGame,
     resignGame,
+    offerDraw,
   };
 };

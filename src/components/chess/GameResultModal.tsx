@@ -2,8 +2,9 @@ import React, { forwardRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Button } from '@/components/ui/button';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
 import { GameResult as GameResultType, PieceColor, Move } from '@/types/chess';
-import { Trophy, Handshake, Clock, Flag, RotateCcw, Home } from 'lucide-react';
+import { Trophy, Handshake, Clock, Flag, RotateCcw, Home, TrendingUp, TrendingDown, Minus } from 'lucide-react';
 import MoveAnalysis from './MoveAnalysis';
 
 interface GameResultModalProps {
@@ -15,6 +16,9 @@ interface GameResultModalProps {
   moves?: Move[];
   whitePlayerName?: string;
   blackPlayerName?: string;
+  currentPlayerColor?: 'w' | 'b' | null;
+  winnerId?: string | null;
+  currentPlayerId?: string | null;
 }
 
 const GameResultModal = forwardRef<HTMLDivElement, GameResultModalProps>(({
@@ -26,8 +30,13 @@ const GameResultModal = forwardRef<HTMLDivElement, GameResultModalProps>(({
   moves = [],
   whitePlayerName = 'White',
   blackPlayerName = 'Black',
+  currentPlayerColor,
+  winnerId,
+  currentPlayerId,
 }, ref) => {
   if (!result) return null;
+
+  const RATING_CHANGE = 16;
 
   const getIcon = () => {
     switch (result.reason) {
@@ -57,6 +66,24 @@ const GameResultModal = forwardRef<HTMLDivElement, GameResultModalProps>(({
         return `${result.winner} wins by resignation!`;
     }
   };
+
+  // Calculate rating change for current player
+  const getRatingChange = () => {
+    if (!isOnlineGame) return null;
+    
+    const isDraw = !winnerId;
+    if (isDraw) {
+      return { value: 0, type: 'draw' as const };
+    }
+    
+    const didWin = winnerId === currentPlayerId;
+    return {
+      value: didWin ? RATING_CHANGE : -RATING_CHANGE,
+      type: didWin ? 'win' as const : 'loss' as const,
+    };
+  };
+
+  const ratingChange = getRatingChange();
 
   return (
     <AnimatePresence>
@@ -113,6 +140,34 @@ const GameResultModal = forwardRef<HTMLDivElement, GameResultModalProps>(({
               {getMessage()}
             </motion.p>
 
+            {/* Rating Change for Online Games */}
+            {isOnlineGame && ratingChange && (
+              <motion.div
+                className="flex justify-center mb-4"
+                initial={{ opacity: 0, scale: 0.8 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ delay: 0.45 }}
+              >
+                <Badge 
+                  variant="outline" 
+                  className={`text-lg px-4 py-2 gap-2 ${
+                    ratingChange.type === 'win' 
+                      ? 'bg-green-500/20 text-green-500 border-green-500/30' 
+                      : ratingChange.type === 'loss'
+                      ? 'bg-red-500/20 text-red-500 border-red-500/30'
+                      : 'bg-muted text-muted-foreground border-border'
+                  }`}
+                >
+                  {ratingChange.type === 'win' && <TrendingUp className="w-5 h-5" />}
+                  {ratingChange.type === 'loss' && <TrendingDown className="w-5 h-5" />}
+                  {ratingChange.type === 'draw' && <Minus className="w-5 h-5" />}
+                  <span className="font-bold">
+                    {ratingChange.value > 0 ? '+' : ''}{ratingChange.value} Rating
+                  </span>
+                </Badge>
+              </motion.div>
+            )}
+
             {/* Stats */}
             <motion.div
               className="bg-secondary/50 rounded-lg p-4 mb-4"
@@ -120,9 +175,20 @@ const GameResultModal = forwardRef<HTMLDivElement, GameResultModalProps>(({
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: 0.5 }}
             >
-              <p className="text-sm text-muted-foreground text-center">
-                Total Moves: <span className="font-bold text-foreground">{result.moveCount}</span>
-              </p>
+              <div className="flex justify-around text-center">
+                <div>
+                  <p className="text-xs text-muted-foreground">Moves</p>
+                  <p className="font-bold text-lg">{result.moveCount}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">White</p>
+                  <p className="font-medium text-sm truncate max-w-24">{whitePlayerName}</p>
+                </div>
+                <div>
+                  <p className="text-xs text-muted-foreground">Black</p>
+                  <p className="font-medium text-sm truncate max-w-24">{blackPlayerName}</p>
+                </div>
+              </div>
             </motion.div>
 
             {/* Move Analysis */}

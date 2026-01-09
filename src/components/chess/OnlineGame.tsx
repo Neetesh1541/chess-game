@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { motion } from 'framer-motion';
 import ChessBoard from './ChessBoard';
 import PlayerInfo from './PlayerInfo';
@@ -9,13 +9,14 @@ import ConnectionStatus from './ConnectionStatus';
 import DrawOffer from './DrawOffer';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
+import { Badge } from '@/components/ui/badge';
 import { useOnlineGame } from '@/hooks/useOnlineGame';
 import { useAuth, Profile } from '@/hooks/useAuth';
 import { useSoundEffects } from '@/hooks/useSoundEffects';
 import { GameResult } from '@/types/chess';
 import { Square } from 'chess.js';
 import { supabase } from '@/integrations/supabase/client';
-import { Flag, ArrowLeft, Volume2, VolumeX, RotateCcw, Check, X } from 'lucide-react';
+import { Flag, ArrowLeft, Volume2, VolumeX, RotateCcw, Check, X, Loader2 } from 'lucide-react';
 
 interface OnlineGameProps {
   onBack: () => void;
@@ -58,50 +59,67 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ onBack }) => {
   const [whiteProfile, setWhiteProfile] = useState<Profile | null>(null);
   const [blackProfile, setBlackProfile] = useState<Profile | null>(null);
   const [isLoadingProfiles, setIsLoadingProfiles] = useState(true);
+  const [rematchSent, setRematchSent] = useState(false);
 
   // Fetch player profiles when game or players change
-  useEffect(() => {
-    const fetchProfiles = async () => {
-      if (!currentGame) {
-        setIsLoadingProfiles(false);
-        return;
-      }
-      
-      setIsLoadingProfiles(true);
-      
-      try {
-        // Fetch white player profile
-        if (currentGame.white_player_id) {
-          const { data: whiteData } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('user_id', currentGame.white_player_id)
-            .single();
-          if (whiteData) {
-            setWhiteProfile(whiteData as Profile);
-          }
+  const fetchProfiles = useCallback(async () => {
+    if (!currentGame) {
+      setIsLoadingProfiles(false);
+      return;
+    }
+    
+    setIsLoadingProfiles(true);
+    
+    try {
+      // Fetch white player profile
+      if (currentGame.white_player_id) {
+        const { data: whiteData } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', currentGame.white_player_id)
+          .single();
+        if (whiteData) {
+          setWhiteProfile(whiteData as Profile);
         }
-
-        // Fetch black player profile
-        if (currentGame.black_player_id) {
-          const { data: blackData } = await supabase
-            .from('profiles')
-            .select('*')
-            .eq('user_id', currentGame.black_player_id)
-            .single();
-          if (blackData) {
-            setBlackProfile(blackData as Profile);
-          }
-        }
-      } catch (error) {
-        console.error('Error fetching profiles:', error);
-      } finally {
-        setIsLoadingProfiles(false);
       }
-    };
 
-    fetchProfiles();
+      // Fetch black player profile
+      if (currentGame.black_player_id) {
+        const { data: blackData } = await supabase
+          .from('profiles')
+          .select('*')
+          .eq('user_id', currentGame.black_player_id)
+          .single();
+        if (blackData) {
+          setBlackProfile(blackData as Profile);
+        }
+      }
+    } catch (error) {
+      console.error('Error fetching profiles:', error);
+    } finally {
+      setIsLoadingProfiles(false);
+    }
   }, [currentGame?.id, currentGame?.white_player_id, currentGame?.black_player_id]);
+
+  // Fetch profiles on mount and when players change
+  useEffect(() => {
+    fetchProfiles();
+  }, [fetchProfiles]);
+
+  // Re-fetch profiles when game status changes to in_progress (opponent joined)
+  useEffect(() => {
+    if (currentGame?.status === 'in_progress') {
+      fetchProfiles();
+    }
+  }, [currentGame?.status, fetchProfiles]);
+
+  // Poll for profiles if black player name is missing
+  useEffect(() => {
+    if (currentGame?.status === 'in_progress' && currentGame?.black_player_id && !blackProfile) {
+      const interval = setInterval(fetchProfiles, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [currentGame?.status, currentGame?.black_player_id, blackProfile, fetchProfiles]);
 
   // Play sounds on moves
   useEffect(() => {
@@ -123,6 +141,7 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ onBack }) => {
   useEffect(() => {
     if (currentGame?.status === 'completed' && !showResult) {
       playGameOver();
+      setRematchSent(false);
       
       const isDraw = !currentGame.winner_id;
       
@@ -163,15 +182,23 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ onBack }) => {
   };
 
   const handleRematch = async () => {
-    setShowResult(false);
-    setGameResult(null);
+    setRematchSent(true);
     await requestRematch();
   };
 
   const handleAcceptRematch = async () => {
     if (rematchRequest) {
+      setShowResult(false);
+      setGameResult(null);
       await acceptRematch(rematchRequest.id);
     }
+  };
+
+  const handleDeclineRematch = () => {
+    setShowResult(false);
+    setGameResult(null);
+    leaveGame();
+    onBack();
   };
 
   const handleNewGame = () => {
@@ -185,7 +212,7 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ onBack }) => {
     return null;
   }
 
-  // Get player names from profiles
+  // Get player names from profiles - use actual usernames, never "Chess Player"
   const whiteName = whiteProfile?.display_name || whiteProfile?.username || (currentGame.white_player_id ? 'Loading...' : 'Waiting...');
   const blackName = blackProfile?.display_name || blackProfile?.username || (currentGame.black_player_id ? 'Loading...' : 'Waiting...');
 
@@ -207,11 +234,14 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ onBack }) => {
           />
           
           <div className="space-y-2">
-            {/* Rematch notification */}
+            {/* Rematch notification - show when opponent requests rematch */}
             {rematchRequest && currentGame.status === 'completed' && (
               <Card className="border-primary/50 bg-primary/10">
-                <CardContent className="p-3">
-                  <p className="text-sm font-medium mb-2">Rematch requested!</p>
+                <CardContent className="p-4">
+                  <p className="text-sm font-semibold mb-3 text-center">🎮 Rematch Requested!</p>
+                  <p className="text-xs text-muted-foreground mb-3 text-center">
+                    Your opponent wants to play again
+                  </p>
                   <div className="flex gap-2">
                     <Button 
                       size="sm" 
@@ -225,7 +255,7 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ onBack }) => {
                       size="sm" 
                       variant="outline" 
                       className="flex-1 gap-1"
-                      onClick={handleNewGame}
+                      onClick={handleDeclineRematch}
                     >
                       <X className="w-4 h-4" />
                       Decline
@@ -233,6 +263,27 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ onBack }) => {
                   </div>
                 </CardContent>
               </Card>
+            )}
+
+            {/* Rematch sent indicator */}
+            {rematchSent && !rematchRequest && currentGame.status === 'completed' && (
+              <Card className="border-muted bg-muted/20">
+                <CardContent className="p-3 flex items-center justify-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span className="text-sm">Waiting for opponent...</span>
+                </CardContent>
+              </Card>
+            )}
+
+            {/* Quick rematch button when game is completed */}
+            {currentGame.status === 'completed' && !rematchRequest && !rematchSent && (
+              <Button 
+                className="w-full gap-2"
+                onClick={handleRematch}
+              >
+                <RotateCcw className="w-4 h-4" />
+                Request Rematch
+              </Button>
             )}
 
             <DrawOffer
@@ -281,6 +332,8 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ onBack }) => {
               <ConnectionStatus isConnected={isRealtimeConnected} />
               {currentGame.status === 'waiting' ? (
                 <span className="text-muted-foreground">Waiting for opponent...</span>
+              ) : currentGame.status === 'completed' ? (
+                <Badge variant="secondary">Game Over</Badge>
               ) : isMyTurn ? (
                 <span className="text-green-500 font-medium">Your turn</span>
               ) : (
@@ -324,6 +377,9 @@ const OnlineGame: React.FC<OnlineGameProps> = ({ onBack }) => {
         moves={moveHistory}
         whitePlayerName={whiteName}
         blackPlayerName={blackName}
+        currentPlayerColor={playerColor}
+        winnerId={currentGame.winner_id}
+        currentPlayerId={user?.id}
       />
 
       {/* In-game chat */}

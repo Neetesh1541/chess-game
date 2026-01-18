@@ -99,7 +99,14 @@ export const useOnlineGame = (userId: string | undefined) => {
     }
   }, [currentGame, playerColor, toast]);
 
-  // Timer countdown effect - uses ref to avoid stale closure and syncs with database
+  // Calculate elapsed time since last update for server-authoritative timing
+  const calculateElapsedTime = useCallback((updatedAt: string) => {
+    const lastUpdate = new Date(updatedAt).getTime();
+    const now = Date.now();
+    return Math.floor((now - lastUpdate) / 1000);
+  }, []);
+
+  // Timer countdown effect - uses server time as authority
   useEffect(() => {
     if (timerIntervalRef.current) {
       clearInterval(timerIntervalRef.current);
@@ -110,12 +117,28 @@ export const useOnlineGame = (userId: string | undefined) => {
       return;
     }
 
-    // Initialize timers from game state if not already set
-    if (currentGame.white_time_remaining != null && currentGame.black_time_remaining != null) {
-      setWhiteTimeRemaining(currentGame.white_time_remaining);
-      setBlackTimeRemaining(currentGame.black_time_remaining);
-    }
+    // Calculate initial timer values based on server time
+    const syncTimersFromServer = () => {
+      if (currentGame.white_time_remaining != null && currentGame.black_time_remaining != null) {
+        const elapsed = calculateElapsedTime(currentGame.updated_at);
+        const turn = currentGame.current_turn;
+        
+        if (turn === 'w') {
+          const syncedWhiteTime = Math.max(0, currentGame.white_time_remaining - elapsed);
+          setWhiteTimeRemaining(syncedWhiteTime);
+          setBlackTimeRemaining(currentGame.black_time_remaining);
+        } else {
+          const syncedBlackTime = Math.max(0, currentGame.black_time_remaining - elapsed);
+          setWhiteTimeRemaining(currentGame.white_time_remaining);
+          setBlackTimeRemaining(syncedBlackTime);
+        }
+      }
+    };
 
+    // Initial sync
+    syncTimersFromServer();
+
+    // Local countdown - runs every second for UI smoothness
     timerIntervalRef.current = setInterval(() => {
       const turn = currentTurnRef.current;
       
@@ -144,7 +167,7 @@ export const useOnlineGame = (userId: string | undefined) => {
         timerIntervalRef.current = null;
       }
     };
-  }, [currentGame?.id, currentGame?.status, currentGame?.time_control, currentGame?.white_time_remaining, currentGame?.black_time_remaining, endGameByTimeout]);
+  }, [currentGame?.id, currentGame?.status, currentGame?.time_control, currentGame?.updated_at, calculateElapsedTime, endGameByTimeout]);
 
   // Load existing move history when joining a game
   const loadMoveHistory = useCallback(async (gameId: string) => {
@@ -287,12 +310,18 @@ export const useOnlineGame = (userId: string | undefined) => {
             setBoardPosition(chess.board());
           }
           
-          // Sync timers
-          if (updatedGame.white_time_remaining != null) {
-            setWhiteTimeRemaining(updatedGame.white_time_remaining);
-          }
-          if (updatedGame.black_time_remaining != null) {
-            setBlackTimeRemaining(updatedGame.black_time_remaining);
+          // Sync timers from server with elapsed time calculation
+          if (updatedGame.white_time_remaining != null && updatedGame.black_time_remaining != null) {
+            const elapsed = Math.floor((Date.now() - new Date(updatedGame.updated_at).getTime()) / 1000);
+            const turn = updatedGame.current_turn;
+            
+            if (turn === 'w') {
+              setWhiteTimeRemaining(Math.max(0, updatedGame.white_time_remaining - elapsed));
+              setBlackTimeRemaining(updatedGame.black_time_remaining);
+            } else {
+              setWhiteTimeRemaining(updatedGame.white_time_remaining);
+              setBlackTimeRemaining(Math.max(0, updatedGame.black_time_remaining - elapsed));
+            }
           }
         }
       )
@@ -357,19 +386,20 @@ export const useOnlineGame = (userId: string | undefined) => {
             setBoardPosition(chess.board());
           }
           
-          // Sync timers from database - only update if significantly different
-          if (game.white_time_remaining != null) {
-            setWhiteTimeRemaining(prev => {
-              const diff = Math.abs(prev - game.white_time_remaining);
-              // Only sync if difference is more than 2 seconds (to avoid flicker)
-              return diff > 2 ? game.white_time_remaining : prev;
-            });
-          }
-          if (game.black_time_remaining != null) {
-            setBlackTimeRemaining(prev => {
-              const diff = Math.abs(prev - game.black_time_remaining);
-              return diff > 2 ? game.black_time_remaining : prev;
-            });
+          // Sync timers from database with server-authoritative elapsed time
+          if (game.white_time_remaining != null && game.black_time_remaining != null) {
+            const elapsed = Math.floor((Date.now() - new Date(game.updated_at).getTime()) / 1000);
+            const turn = game.current_turn;
+            
+            if (turn === 'w') {
+              const serverWhiteTime = Math.max(0, game.white_time_remaining - elapsed);
+              setWhiteTimeRemaining(prev => Math.abs(prev - serverWhiteTime) > 1 ? serverWhiteTime : prev);
+              setBlackTimeRemaining(game.black_time_remaining);
+            } else {
+              setWhiteTimeRemaining(game.white_time_remaining);
+              const serverBlackTime = Math.max(0, game.black_time_remaining - elapsed);
+              setBlackTimeRemaining(prev => Math.abs(prev - serverBlackTime) > 1 ? serverBlackTime : prev);
+            }
           }
         }
       }

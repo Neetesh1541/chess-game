@@ -1,71 +1,54 @@
-# ♟ Online Chess Game...
+# ♟️ Online Chess Game
 
-A modern, interactive web-based chess game built for players of all levels.  
-Designed with a clean UI, smooth gameplay, and responsive experience across all devices.
+A modern browser-based chess experience focused on clean UI, responsive gameplay, legal move validation, and core chess state management.
 
----
+## ✨ Features
 
-## 🚀 Features
+- ♟️ Functional chess gameplay
+- ✅ Legal move validation
+- 💡 Move highlighting
+- 👑 Check, checkmate, and stalemate handling
+- ↩️ Undo and reset controls
+- 📱 Responsive interface
+- ✨ Smooth transitions
 
-- 🎮 Fully functional chess gameplay  
-- ♜ Real-time move validation  
-- ♞ Legal move highlighting  
-- ♚ Check, checkmate & stalemate detection  
-- 🔄 Game reset & undo support  
-- 💻 Responsive design (mobile + desktop)  
-- 🎨 Clean and minimal UI  
-- ⚡ Smooth animations & transitions
+## 🛠️ Tech Stack
 
----
-
-## 🛠 Tech Stack
-
-**Frontend:**  
-HTML, CSS, JavaScript, React
-
-**Backend:**  
-Node.js / Flask *(if applicable)*
-
-**Hosting:**  
-Vercel
-
----
+- HTML
+- CSS
+- JavaScript
+- React
+- Vercel
 
 ## 🌐 Live Demo
 
-🔗 https://chess-game-iota-eight.vercel.app/
+https://chess-game-iota-eight.vercel.app/
 
----
+## 🚀 Getting Started
 
-## 🧠 Learning Outcomes
+Clone the repository and install the dependencies defined by the project:
 
-- Game logic implementation  
-- State management in React  
-- UI/UX optimization  
-- Event-driven programming  
-- Algorithmic problem solving
+```bash
+git clone https://github.com/Neetesh1541/chess-game.git
+cd chess-game
+npm install
+npm run dev
+```
 
----
+## 🧠 Learning Focus
 
-## 🎯 Future Enhancements
+This project explores game-state management, event-driven UI, chess-rule implementation, and algorithmic problem solving.
 
-- ♖ AI opponent with difficulty levels  
-- 🧑‍🤝‍🧑 Multiplayer mode  
-- ⏱ Timer & ranked matches  
-- 🏆 Leaderboard & match history  
-- 🔐 User authentication & profiles
+## 🔮 Future Improvements
 
----
+- AI opponent with difficulty levels
+- Online multiplayer
+- Chess timers and ranked matches
+- Leaderboards and match history
+- User authentication
 
-## 👨‍💻 Developer
+## 👨‍💻 Author
 
-**Neetesh Kumar**  
-Full-Stack Developer | AI/ML Enthusiast  
+Built by **Neetesh Sharma**.
 
-📧 neeteshk1104@gmail.com  
-🐙 GitHub: https://github.com/neetesh1541  
-🌐 Portfolio: https://neetesh.tech
-
----
-
-> *Play smart. Think ahead. Win bold.*
+> Play smart. Think ahead. Win bold.

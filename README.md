@@ -1,6 +1,6 @@
 # ♟️ Online Chess Game
 
-A modern browser-based chess experience focused on clean UI, responsive gameplay, legal move validation, and core chess state management.
+A modern browser-based chess experience focused on **clean UI, responsive gameplay, legal move validation, and chess state management**.
 
 ## ✨ Features
 
@@ -26,8 +26,6 @@ https://chess-game-iota-eight.vercel.app/
 
 ## 🚀 Getting Started
 
-Clone the repository and install the dependencies defined by the project:
-
 ```bash
 git clone https://github.com/Neetesh1541/chess-game.git
 cd chess-game
@@ -35,11 +33,11 @@ npm install
 npm run dev
 ```
 
-## 🧠 Learning Focus
+## 🧠 What This Project Demonstrates
 
-This project explores game-state management, event-driven UI, chess-rule implementation, and algorithmic problem solving.
+This project explores **game-state management, event-driven UI, chess-rule implementation, and algorithmic problem solving** in a browser environment.
 
-## 🔮 Future Improvements
+## 🔮 Roadmap
 
 - AI opponent with difficulty levels
 - Online multiplayer

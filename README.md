@@ -1,4 +1,4 @@
-# ♟️ Online Chess Game
+# ♟️ Online Chess Game..
 
 A modern browser-based chess experience focused on **clean UI, responsive gameplay, legal move validation, and chess state management**.
 
